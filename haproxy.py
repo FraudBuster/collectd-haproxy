@@ -25,6 +25,8 @@ else:
 PLUGIN_NAME = 'haproxy'
 RECV_SIZE = 1024
 
+METRICS_FORMAT='{type}_{proxy_name}'
+
 DEFAULT_METRICS = {
     'ConnRate': ('connection_rate', 'gauge'),
     'CumReq': ('requests', 'derive'),
@@ -343,21 +345,21 @@ def config(config_values):
                            **interval_kwarg)
 
 
-def _format_dimensions(dimensions):
+def _format_dimensions(dimensions, fmt):
     """
     Formats a dictionary of dimensions to a format that enables them to be
     specified as key, value pairs in plugin_instance to signalfx. E.g.
     >>> dimensions = {'a': 'foo', 'b': 'bar'}
-    >>> _format_dimensions(dimensions)
+    >>> _format_dimensions(dimensions, fmt)
     "[a=foo,b=bar]"
     Args:
     dimensions (dict): Mapping of {dimension_name: value, ...}
+    fmt (str): formatting string to apply on the dimensions dict
     Returns:
     str: Comma-separated list of dimensions
     """
 
-    dim_pairs = ["%s=%s" % (k, v) for k, v in viewitems(dimensions)]
-    return "[%s]" % (",".join(dim_pairs))
+    return fmt.format_map(dimensions).lower()
 
 
 def _get_proxy_type(type_id):
@@ -428,7 +430,7 @@ def collect_metrics(module_config):
         datapoint.plugin = PLUGIN_NAME
         dimensions.update(module_config['custom_dimensions'])
         if len(dimensions) > 0:
-            datapoint.plugin_instance = _format_dimensions(dimensions)
+            datapoint.plugin_instance = _format_dimensions(dimensions, METRICS_FORMAT)
         datapoint.values = (metric_value,)
         pprint_dict = {
                     'plugin': datapoint.plugin,
